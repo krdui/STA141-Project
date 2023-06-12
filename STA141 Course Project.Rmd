@@ -1,0 +1,566 @@
+---
+title: "STA141A Course Project"
+author: "Katelin Dui 919967807"
+date: "2023-05-23"
+output: html_document
+---
+### Abstract
+As a collection of what we have learned in our STA141A class, this document is a report analysis derived from the exploration of a large set of data. The focus of this report is to achieve the goal of creating a predictive model in order to apply it to the released "test data" for our final. From there, the results of the predictive models are to be used in a discussion of accuracy with respect to the different data sets. 
+
+### Section 1: Introduction
+In this project we will be analyzing a subset of data collected by Steinmetz et al. (2019). In this study, experiments were performed on a total of 10 mice over 39 sessions, in which those sessions consisted of several hundred trials. In the trials, the mice were randomly presented with visual stimuli, which had varying contrast levels, on two screens that were positioned on either sides of it. The mice used a wheel controlled by their forepaws to make decisions regarding the visual stimuli. Depending on the decision made by the mouse, a reward or penalty was administered. 
+
+For this project specifically, we will focus on the spike trains of neurons from the onset of the stimuli to 0.4 seconds post-onset. Additionally, we will only be using Sessions 1 to 18 for the four mice: Cori, Frossman, Hench, and Lederberg. 
+
+The objective for this project is to build a predictive model to predict the feedback type of each trial using the neural activity data and the stimuli. 
+
+```{r, echo=FALSE}
+# importing Sessions 1-18 into R
+setwd("/Users/katelindui/Desktop/sessions")
+
+session=list()
+overview = data.frame(mouse_name = character(), date_exp = character())
+
+for(i in 1:18){
+  session[[i]]=readRDS(paste("/Users/katelindui/Desktop/sessions/session", i,'.rds',sep=''))
+  overview = rbind(overview, data.frame(mouse_name = session[[i]]$mouse_name, date_exp = session[[i]]$date_exp))
+}
+```
+
+```{r, echo=FALSE}
+# assigning session names to the 18 sessions
+session1=cbind(session[[1]]$contrast_left,session[[1]]$contrast_right,rep(1,length(session[[1]]$contrast_left)),session[[1]]$mouse_name,length(session[[1]]$brain_area),length(unique(session[[1]]$brain_area)),length(session[[1]]$spks),session[[1]]$feedback_type)
+
+session2=cbind(session[[2]]$contrast_left,session[[2]]$contrast_right,rep(2,length(session[[2]]$contrast_left)),session[[2]]$mouse_name,length(session[[1]]$brain_area),length(unique(session[[2]]$brain_area)),length(session[[2]]$spks),session[[2]]$feedback_type)
+
+session3=cbind(session[[3]]$contrast_left,session[[3]]$contrast_right,session[[3]]$firingrate,session[[3]]$max_firingrate,rep(3,length(session[[3]]$contrast_left)),session[[3]]$mouse_name,length(session[[1]]$brain_area),length(unique(session[[3]]$brain_area)),length(session[[3]]$spks),session[[3]]$feedback_type)
+
+session4=cbind(session[[4]]$contrast_left,session[[4]]$contrast_right,rep(4,length(session[[4]]$contrast_left)),session[[4]]$mouse_name,length(session[[4]]$brain_area),length(unique(session[[4]]$brain_area)),length(session[[4]]$spks),session[[4]]$feedback_type)
+
+session5=cbind(session[[5]]$contrast_left,session[[5]]$contrast_right,rep(5,length(session[[5]]$contrast_left)),session[[5]]$mouse_name,length(session[[5]]$brain_area),length(unique(session[[5]]$brain_area)),length(session[[5]]$spks),session[[5]]$feedback_type)
+
+session6=cbind(session[[6]]$contrast_left,session[[6]]$contrast_right,session[[6]]$firingrate,session[[6]]$max_firingrate,rep(6,length(session[[6]]$contrast_left)),session[[6]]$mouse_name,length(session[[6]]$brain_area),length(unique(session[[6]]$brain_area)),length(session[[6]]$spks),session[[6]]$feedback_type)
+
+session7=cbind(session[[7]]$contrast_left,session[[7]]$contrast_right,rep(7,length(session[[7]]$contrast_left)),session[[7]]$mouse_name,length(session[[7]]$brain_area),length(unique(session[[7]]$brain_area)),length(session[[7]]$spks),session[[7]]$feedback_type)
+
+session8=cbind(session[[8]]$contrast_left,session[[8]]$contrast_right,rep(8,length(session[[8]]$contrast_left)),session[[8]]$mouse_name,length(session[[8]]$brain_area),length(unique(session[[8]]$brain_area)),length(session[[8]]$spks),session[[8]]$feedback_type)
+
+session9=cbind(session[[9]]$contrast_left,session[[9]]$contrast_right,session[[9]]$firingrate,session[[9]]$max_firingrate,rep(9,length(session[[9]]$contrast_left)),session[[9]]$mouse_name,length(session[[9]]$brain_area),length(unique(session[[9]]$brain_area)),length(session[[9]]$spks),session[[9]]$feedback_type)
+
+session10=cbind(session[[10]]$contrast_left,session[[10]]$contrast_right,rep(10,length(session[[10]]$contrast_left)),session[[10]]$mouse_name,length(session[[10]]$brain_area),length(unique(session[[10]]$brain_area)),length(session[[10]]$spks),session[[10]]$feedback_type)
+
+session11=cbind(session[[11]]$contrast_left,session[[11]]$contrast_right,rep(11,length(session[[11]]$contrast_left)),session[[11]]$mouse_name,length(session[[11]]$brain_area),length(unique(session[[11]]$brain_area)),length(session[[11]]$spks),session[[11]]$feedback_type)
+
+session12=cbind(session[[12]]$contrast_left,session[[12]]$contrast_right,session[[12]]$firingrate,session[[12]]$max_firingrate,rep(12,length(session[[12]]$contrast_left)),session[[12]]$mouse_name,length(session[[12]]$brain_area),length(unique(session[[12]]$brain_area)),length(session[[12]]$spks),session[[12]]$feedback_type)
+
+session13=cbind(session[[13]]$contrast_left,session[[13]]$contrast_right,rep(13,length(session[[13]]$contrast_left)),session[[13]]$mouse_name,length(session[[13]]$brain_area),length(unique(session[[13]]$brain_area)),length(session[[13]]$spks),session[[13]]$feedback_type)
+
+session14=cbind(session[[14]]$contrast_left,session[[14]]$contrast_right,rep(14,length(session[[14]]$contrast_left)),session[[14]]$mouse_name,length(session[[14]]$brain_area),length(unique(session[[14]]$brain_area)),length(session[[14]]$spks),session[[14]]$feedback_type)
+
+session15=cbind(session[[15]]$contrast_left,session[[15]]$contrast_right,session[[15]]$firingrate,session[[15]]$max_firingrate,rep(15,length(session[[15]]$contrast_left)),session[[15]]$mouse_name,length(session[[15]]$brain_area),length(unique(session[[15]]$brain_area)),length(session[[15]]$spks),session[[15]]$feedback_type)
+
+session16=cbind(session[[16]]$contrast_left,session[[16]]$contrast_right,rep(16,length(session[[16]]$contrast_left)),session[[16]]$mouse_name,length(session[[16]]$brain_area),length(unique(session[[16]]$brain_area)),length(session[[16]]$spks),session[[16]]$feedback_type)
+
+session17=cbind(session[[17]]$contrast_left,session[[17]]$contrast_right,rep(17,length(session[[17]]$contrast_left)),session[[17]]$mouse_name,length(session[[17]]$brain_area),length(unique(session[[17]]$brain_area)),length(session[[17]]$spks),session[[17]]$feedback_type)
+
+session18=cbind(session[[18]]$contrast_left,session[[18]]$contrast_right,session[[18]]$firingrate,session[[18]]$max_firingrate,rep(18,length(session[[18]]$contrast_left)),session[[18]]$mouse_name,length(session[[18]]$brain_area),length(unique(session[[18]]$brain_area)),length(session[[18]]$spks),session[[18]]$feedback_type)
+```
+
+```{r, echo=FALSE}
+# loading necessary packages for code used in this project
+library(ggplot2)
+library(dplyr)
+library(tidyverse)
+library(kableExtra)
+library(forecast)
+library(caret)
+```
+
+```{r, echo=FALSE}
+# creating an organized table to see variables
+n.session = length(session)
+
+meta <- tibble(
+  mouse_name = rep('name', n.session), 
+  date_exp = rep('dt', n.session), 
+  n_brain_area = rep(0, n.session),
+  n_neurons = rep(0, n.session), 
+  n_trials = rep(0, n.session), 
+  success_rate = rep(0, n.session)
+)
+
+for(i in 1:n.session){
+  tmp= session[[i]]; 
+  meta[i,1]= tmp$mouse_name
+  meta[i,2]= tmp$date_exp
+  meta[i,3]= length(unique(tmp$brain_area)); 
+  meta[i,4]= dim(tmp$spk[[1]])[1];
+  meta[i,5]= length(tmp$feedback_type);
+  meta[i,6]= mean(tmp$feedback_type+1)/2; 
+}
+
+kable(meta, format = "html", table.attr = "class='table table-striped'", digits=2)
+```
+
+Printed above is a table to supplement our understanding of the data structures across sessions for this project. Included in the table are the variables: mouse_name (name of the mouse in the specific session), date_exp (date of the experiment), n_brain_area (the unique brain area involved), n_neurons (number of neurons), n_trials (number of trials in each session), and success_rate (ration of successful trials to the total number of trials). Looking at the table, it is also noted that the selected data does not contain any missing values. 
+
+```{r, echo=FALSE}
+# combining the 18 sessions into one data set called df
+df = rbind(session1, session2, session3, session4, session5, session6, session7, session8, session9, session10, session11, session12, session13, session14, session15, session16, session17, session18)
+
+colnames(df) = c("contrast_left","contrast_right","session","mouse","number_of_neurons","brain_area","number_of_trials", "feedback_type")
+df = as.data.frame(df)
+df$contrast_left = as.factor(df$contrast_left)
+df$contrast_right = as.factor(df$contrast_right)
+df$session = as.factor (df$session)
+df$mouse = as.factor(df$mouse)
+df$feedback_type = as.factor(df$feedback_type)
+
+# summary of df
+summary(df)
+
+# names of mice
+cat("The names of the mice we will be using in this project are:", toString(unique(df$mouse)), "\n")
+# number of sessions
+cat("The total number of sessions we will be using for this project is:", length(unique(df$session)), "\n")
+# number of trials
+cat("The total number of trials from the 18 sessions is:", length(df$number_of_trials), "(specific trial counts for each session can be found under the 'session' column in the summary of the data frame)", "\n")
+# stimuli conditions
+cat("The left contrast stimuli conditions are:", toString(unique(df$contrast_left)), "(specific counts for each condition can be found under the 'contrast_left' column)", "\n")
+cat("The right contrast stimuli conditions are:", toString(unique(df$contrast_right)), "(specific counts for each condition can be found under the 'contrast_right' column)", "\n")
+# feedback types
+cat("The two possible feedback types are:", toString(unique(df$feedback_type)), "(where (1) is a success and (-1) is failure)", "\n")
+```
+
+```{r, echo=FALSE}
+session = list()
+for(i in 1:18){
+  session[[i]]=readRDS(paste("/Users/katelindui/Desktop/sessions/session", i,'.rds',sep=''))
+}
+
+df <- data.frame()
+for(i in 1:18){
+  temp <- data.frame(session[[i]]$feedback_type, session[[i]]$mouse_name)
+  colnames(temp) <- c("feedback_type", "mouse_name")
+  df <- rbind(df, temp)
+}
+
+df_counts <- df %>% group_by(mouse_name, feedback_type) %>% summarise(n = n()) %>%
+  mutate(feedback_type= ifelse(feedback_type== 1, "Success", "Failure"))
+# histogram of success and fail trials
+ggplot(df_counts, aes(x = mouse_name, y = n, fill = feedback_type)) + geom_bar(stat = "identity", position = "dodge") + labs(title="Counts of Success and Fail Trials for Each Mice", x = "Mice", y = "Count")
+```
+
+In the histogram above, it contains the counts for the failure and success feedback types for each of the 4 mice we are investigating in this project. I believe a figure like this one is helpful in the sense that it can provide us with a visual representation of the number of failures compared to the number of successes for each mice in the trials. 
+
+### Section 2: Data Exploration
+For this section of the project, we will begin by exploring trials in Section 3. 
+```{r, echo=FALSE}
+# session 3, trial 8
+i.s=3
+i.t=8
+
+spk.trial = session[[i.s]]$spks[[i.t]]
+area=session[[i.s]]$brain_area
+
+spks.count = apply(spk.trial, 1, sum)
+spks.average.tapply = tapply(spks.count, area, mean)
+
+tmp <- data.frame(
+  area = area,
+  spikes=spks.count
+)
+
+spk.average.dplyr = tmp %>%
+  group_by(area) %>%
+  summarize(mean=mean(spikes))
+
+average_spike_area <- function(i.t, this_session){
+  spk.trial = this_session$spks[[i.t]]
+  area = this_session$brain_area
+  spk.count=apply(spk.trial, 1, sum)
+  spk.average.tapply= tapply(spk.count, area,mean)
+  return(spk.average.tapply)
+}
+# average spikes in brain regions
+average_spike_area(8, this_session = session[[i.s]])
+```
+
+The values above are the average spikes across neurons that live in the same area for session 3: trial 8. For example, the average spike in the 'CA1' (field CA1) of the brain is 2.119048. The average spike in the 'DG' (dentate gyrus) of the brain is 3.764706. A notably high average spike across neurons is in the 'MRN' (midbrain reticular nucleus) region of the brain with a value of 5.926829. A high spike average in this region of the brain may be explained by the function of the MRN as it contributes to the responsiveness of an organism. This means that when the mice are randomly shown the different visual stimuli, this may cause a spike in this region of the brain. A notably low average spike is in the 'POST' (postsubiculum) region of the brain with a value of 1.111111. Since this experiment looks at the response decisions of the mice as a result of the presented stimuli, this may explain the low average spike trains in this area of the brain since it is essentially responsible for spatial direction & memory.
+
+```{r, echo=FALSE}
+# trials in session 3
+average_spike_area(32, this_session = session[[i.s]])
+average_spike_area(50, this_session = session[[i.s]])
+average_spike_area(100, this_session = session[[i.s]])
+average_spike_area(150, this_session = session[[i.s]])
+average_spike_area(200, this_session = session[[i.s]])
+```
+
+Printed above are the average spikes across neurons for trials 32, 50, 100, 150, and 200 (respectively). From these randomly selected trials in session 3, we see that the region with the highest average spike remains in the 'MRN' region. For trial 50, we see that the lowest average spike occurs in the 'POST' region, similar to the statements made from the 8th trial above, but in trial 32, 150, and 200, the lowest average spike occurs in the 'root' region.
+
+```{r, echo=FALSE}
+# creating a table for average spikes in brain regions for all the trials in session 3
+n.trial=length(session[[i.s]]$feedback_type)
+n.area=length(unique(session[[i.s]]$brain_area))
+
+trial.summary = matrix(nrow=n.trial, ncol=n.area+1+2+1)
+for(i.t in 1:n.trial){
+  trial.summary[i.t,]=c(average_spike_area(i.t, this_session=session[[i.s]]),
+                        session[[i.s]]$feedback_type[i.t],
+                        session[[i.s]]$contrast_left[i.t],
+                        session[[i.s]]$contrast_right[i.s],
+                        i.t)
+}
+
+colnames(trial.summary)=c(names(average_spike_area(i.t, this_session = session[[i.s]])), 'feedback', 'left contrast', 'right contrast', 'id')
+
+trial.summary <- as_tibble(trial.summary)
+print(trial.summary)
+```
+
+We know that 'session 3' contains 228 trials. The table printed above is all the average spike counts in the varying brain regions for 'session 3.' The different rows represent the different trials in the session. Looking at this table, we see that for the most part, the highest spike trains typically occurs in the 'MRN' region and the lowest average spike train commonly occurs in the 'POST' or 'root' region. 
+
+```{r, echo=FALSE}
+area.col= rainbow(n=n.area, alpha=0.7)
+
+plot(x=1, y=0,
+     col='white', xlim=c(0,n.trial), ylim=c(0.5, 6), xlab="Trials", ylab="Average Spike Counts", main=paste("Spikes Per Area in Session", i.s))
+
+for (i in 1:n.area){
+  lines(y=trial.summary[[i]], x=trial.summary$id, col=area.col[i], lty=2, lwd=1)
+  lines(smooth.spline(trial.summary$id, trial.summary[[i]]), col=area.col[i], lwd=3)
+}
+
+legend("topright", legend=colnames(trial.summary)[1:n.area], col=area.col, lty=1, cex=0.8)
+```
+
+The figure above is a visual representation of the average spike data in the varying brain regions from the table above. In this plot, we see that the different solid colored lines correlate with different regions of the brain distinguished by the legend on the top right. From this plot, we can see that the solid darker green line that correlates to 'MRN' has the highest average spike counts across all the trials in session 3. The light blue solid-colored line at the bottom of the plot correlates with 'POST' and for the most part, it has the lowest average spike of neurons in this area until around the 200th trial where the lowest average spike occurs in 'VISp' (primary visual area).
+In the plot, it also shows that the solid-colored lines representing 'SPF' and 'LP' (lateral posterior nucleus of the thalamus) have noticeable decreasing and increasing trends among the spike averages across the trials compared other regions. 'DG' (dentate gyrus) has a steady gradual decrease in average spikes across the trials where as 'MG' (medical geniculate complex of the thalamus) has a steady gradual increase in average spikes across trials. 
+We can also see that the average spikes in 'CA1'(field CA1), 'NB', and 'VISam' (anteromedial visual area) are relatively similar across the trials in session 3. 
+
+```{r, echo=FALSE}
+plot.trial <- function(i.t, area, area.col, this_session){
+   spks= this_session$spks[[i.t]];
+   n.neuron= dim(spks)[1]
+   time.points= this_session$time[[i.t]]
+   plot(0.0, xlim= c(min(time.points), max(time.points)), ylim= c(0, n.neuron+1), col='white', xlab= 'Time (s)', yaxt= 'n', ylab= 'Neuron', main=paste('Trial', i.t, 'feedback', this_session$feedback_type[i.t]), cex.lab=1.5)
+   for(i in 1:n.neuron){
+     i.a=which(area==this_session$brain_area[i]);
+     col.this=area.col[i.a]
+     ids.spike= which(spks[i,]>0)
+     if(length(ids.spike)>0){
+       points(x=time.points[ids.spike], y=rep(i, length(ids.spike)), pch='.', cex=2, col=col.this)
+     }
+   }
+   legend("topright", legend=area, col=area.col, pch=16, cex=0.8)
+}
+
+varname=names(trial.summary);
+area=varname[1:(length(varname)-4)]
+```
+
+```{r, echo=FALSE}
+varname=names(trial.summary);
+area=varname[1:(length(varname)-4)]
+par(mfrow=c(1,2))
+plot.trial(1, area, area.col, session[[i.s]])
+plot.trial(228, area, area.col, session[[i.s]])
+```
+
+The figure above contains the raster plots for the first (1) and last (228) trial of session 3. From these plots, it tracks the number of different neurons spiking in that specific part of the brain by time. It also shows some neurons spiking at multiple regions of the brain at once. 
+
+```{r, echo=FALSE}
+# avg spike per trial across session 3
+avg_spikes <- list()
+for(i in 1:18){
+  avg_spikes[[i]] <- sapply(session[[i]]$spks, function(x)
+    mean(x))
+}
+
+ggplot() +geom_line(aes(x=1:length(avg_spikes[[3]]), y=avg_spikes[[3]])) + xlab("Trial") + ylab("Average Spikes")+ ggtitle("Session 3")
+```
+
+This figure above shows the average spike trends across all the trials in Session 3. There does not seem to be a distinct pattern in the plot as the the average spike may increase then decrease or vice versa. The average spike may also increase then increase or decrease then decrease. The average spikes throughout the trials in Session 3 varies. 
+
+```{r, echo=FALSE}
+# difference in avg spikes from trial to trial for session 3
+diff_avg_spikes <- diff(avg_spikes[[3]])
+
+ggplot() + geom_line(aes(x=1:length(diff_avg_spikes), y= diff_avg_spikes)) +
+  xlab("Trial") + ylab("Change in Average Spikes") + ggtitle("Session 3")
+```
+
+This figure shows the change in average spikes throughout the trials in Session 3. The trends in this figure appear to be not as sporadic as the trends in the figure of 'Average Spikes' from above. A majority of the change in average spikes appears to be with the values of 0.01 and -0.01 with the occasional change in average spikes that go slightly beyond 0.01 and -0.01.
+
+```{r, echo=FALSE}
+# data frame w avg spike for all sessions
+avg_spikes_df <- tibble(
+  session= integer(),
+  avg_spikes = numeric()
+)
+
+for (i in 1:18){
+  avg_spikes_df <- avg_spikes_df %>%
+    add_row(session = rep(i, length(avg_spikes[[i]])),
+            avg_spikes = avg_spikes[[i]]
+            )
+}
+
+ggplot(avg_spikes_df, aes(x=avg_spikes)) + geom_histogram(bins = 30, fill="blue", color = "black")+
+  facet_wrap(~session) + xlab("Average Spikes") + ylab("Count") + theme_minimal() +
+  ggtitle("Histogram of Average Spikes per Session")
+```
+
+The figure above contains the histograms of average spikes for the 18 sessions that we are using for this project. Session 13 appears to be the only session that has a bell shaped normally distributed average spike. Sessions 2, 3, 4, 7, 14, and 16 appear to be sessions with a slightly right-skewed average spikes per session histogram. Sessions 10, 12, 17, and 18 appear to have left skewed histograms showing average spikes. Sessions 1, 5, 8, 9, and 11 to have histograms that are bimodal. 
+
+### Section 3: Data Integration
+```{r, echo=FALSE}
+session_summary = list()
+for(i in 1:18){
+  # empty data frames to store summary data for each trial
+  trial_summary = data.frame(
+    session_number = numeric(),
+    feedback_type = numeric(),
+    contrast_left = numeric(),
+    contrast_right = numeric(),
+    spks_mean = numeric(),
+    spks_sd = numeric()
+  )
+  
+  for(j in 1:length(session[[i]]$feedback_type)){
+    # summary statistic for spks matrix (current trial)
+    spks_mean = mean(c(session[[i]]$spks[[j]]))
+    spks_sd = sd(c(session[[i]]$spks[[j]]))
+    
+    # add summary data for current trial to data frame
+    trial_summary = rbind(trial_summary, data.frame(
+      session_number = i,
+      feedback_type = session[[i]]$feedback_type[j],
+      contrast_left = session[[i]]$contrast_left[j],
+      contrast_right = session[[i]]$contrast_right[j],
+      spks_mean = spks_mean,
+      spks_sd = spks_sd
+    ))
+  }
+  # add summary data for current session to list
+  session_summary[[i]] = trial_summary
+}
+
+session_all = bind_rows(session_summary)  
+str(session_all)
+```
+
+```{r, echo=FALSE}
+# PCA
+pca_data <- session_all[,c("contrast_left", "contrast_right", "spks_mean", "spks_sd")]
+pca_data <- scale(pca_data)
+
+pca_result <- prcomp(pca_data, scale. = TRUE)
+
+summary(pca_result)
+```
+
+Printed above is a summary table for the results from running a principal component analysis (PCA). The table showcases the standard deviation, proportion of variance that is explained by each principal component, and the cumulative of variance explained. 
+
+```{r, echo=FALSE}
+# finding values of varience explained
+var_explained <- pca_result$sdev^2/sum(pca_result$sdev^2)
+var_explained[1:4]
+
+# creating a scree plot for the variance explained by the PCs
+qplot(c(1:4), var_explained) + 
+  geom_line() + 
+  xlab("Principal Component") + 
+  ylab("Variance Explained") +
+  ggtitle("Scree Plot") +
+  ylim(0, 1)
+```
+
+From the scree plot and the variance explained results, we see that the first principal component explains 51.07% of the total variation in the dataset. The second principal component explains 25.83% of the total variation in the dataset. The third principal component explains 22.63% of the total variance in the dataset. The fourth principal component explains 0.47% of the total variation in the dataset. 
+
+```{r, echo=FALSE}
+biplot(pca_result)
+```
+
+```{r, echo=FALSE}
+pca_data_frame <- as.data.frame(pca_result$x)
+pca_data_frame$session_number <- session_all$session_number
+
+ggplot(pca_data_frame, aes(x = PC1, y = PC2, color = as.factor(session_number))) +
+  geom_point() +
+  labs(color = "Session Number") +
+  theme_minimal() +
+  ggtitle("PCA Plot")
+
+plot.trial <- function(i.t, area, area.col, this_session, k){
+
+    spks = this_session$spks[[i.t]]
+    n.neuron = dim(spks)[1]
+    time.points = this_session$time[[i.t]]
+    # k-means clustering on the spike counts
+    km_result <- kmeans(spks, centers = k)
+    # add cluster assignments to data frame
+    cluster_assignments <- km_result$cluster
+
+    plot(0, 0, xlim = c(min(time.points), max(time.points)), ylim = c(0, n.neuron+1), col = 'white', xlab = 'Time (s)', yaxt = 'n', ylab = 'Neuron', main = paste('Trial ', i.t, 'feedback', this_session$feedback_type[i.t]), cex.lab = 1.5)
+    for(i in 1:n.neuron){
+        i.a = which(area == this_session$brain_area[i])
+        col.this = area.col[i.a]
+
+        ids.spike = which(spks[i,] > 0) # find out when there are spikes 
+        if( length(ids.spike) > 0 ){
+            points(x = time.points[ids.spike], y = rep(i, length(ids.spike)), pch = '.', cex = 2, col = col.this)
+        }
+    }
+}
+```
+
+Since the first and second principal components explain a majority of the total variance of the dataset, the figure above is a PCA plot with the first principal components on the x-axis and the second principal components are on the y-axis. It is filled with all of 18 sessions we are examining for the project. The 1st and second principal components of the sessions appear to create diagonally parallel "lines."
+If you were to look at the plot of the third and fourth principal components, the plot would not look as organized and distinguished because the third and fourth principal components explain the smallest amount of the total variance for the dataset. This PCA plot would have large clusters of data representing the various sessions whereas the PCA using the first and second principal components has "lines" of data. 
+
+```{r, echo=FALSE}
+# combining all sessions into one data frame
+combined_data_df <- do.call(rbind, lapply(session, function(s){
+  data.frame(Date = s$date_exp, 
+             FeedbackType = s$feedback_type)
+}))
+
+# ordering by date
+combined_data_df <- combined_data_df[order(combined_data_df$Date),]
+
+# converting feedback type to numeric time series
+ts_data <- ts(combined_data_df$FeedbackType)
+
+# ARIMA model
+fit <- auto.arima(ts_data)
+
+# forecast next 10 data points
+forecasts <- forecast(fit, h = 10)
+```
+
+```{r, echo=FALSE}
+# converting feedback_type to a binary variable
+session_all$binary_feedback <- ifelse(session_all$feedback_type == -1, 0, 1)
+
+# logistic regression model
+logistic_model <- glm(binary_feedback ~ contrast_left + contrast_right + spks_mean + spks_sd, data = session_all, family = "binomial")
+
+# print model summary
+session_all$binary_feedback <- ifelse(session_all$feedback_type == -1, 0, 1)
+logistic_model <- glm(binary_feedback ~ contrast_left + contrast_right + spks_mean + spks_sd, data = session_all, family = "binomial")
+summary(logistic_model)
+
+plot(logistic_model)
+```
+
+Printed above is the summary of the logistic model along with some plots. From the summary table, the: minimum is -1.9791, first quartile is -1.4495, mean is 0.7708, third quartile is 0.8618, and max is 1.0610. The summary table also gives the values of the estimate, standard error, z-value, and the p-value associated with the z-value column for contrast_left, contrast_right, spks_mean, and spks_sd. The number of Fisher Scoring iterations is 4, which means there were 4 iterations before the process stopped and outputted the results. 
+There is a plot showing the Residuals vs Fitted, the Normal Q-Q plot, the Scale Location plot, and the Residual vs Leverage from the logistic model.
+
+### Section 4: Predictive Modeling
+```{r, echo=FALSE}
+library(caret)
+session_data <- list()
+
+for(i in 1:length(session)){
+  feedback_type <- session[[i]]$feedback_type
+  spk_counts <- sapply(session[[i]]$spks, function(x) sum(rowSums(x)))
+  left_contrast <- session[[i]]$contrast_left
+  right_contrast <- session[[i]]$contrast_right
+  
+  session_data[[i]] <- data.frame (feedback_type, spk_counts, left_contrast, right_contrast)
+}
+
+combined_data_df <- do.call(rbind, session_data)
+
+combined_data_df$feedback_type <- as.factor(combined_data_df$feedback_type)
+
+set.seed(123)
+train_indices <- createDataPartition(combined_data_df$feedback_type, p = 0.5, list = FALSE)
+train_data <- combined_data_df[train_indices, ]
+test_data <- combined_data_df[-train_indices, ]
+
+pred_model <- train(feedback_type ~ ., data = train_data, method = "glm", family = "binomial")
+
+actual <- test_data$feedback_type
+predictions <- predict(pred_model, newdata = test_data)
+
+confusion_matrix <- table(Prediction= predictions, Actual= actual)
+accuracy <- confusionMatrix(confusion_matrix)
+accuracy
+
+# predictions using the logistic regression model
+predictions <- predict(logistic_model, newdata = session_all, type = "response")
+
+# convert predicted probabilities to binary predictions
+binary_predictions <- ifelse(predictions >= 0.5, 1, 0)
+
+# misclassification error rate
+misclassification_rate <- mean(binary_predictions != session_all$feedback_type)
+cat("Misclassification Error Rate:", misclassification_rate, "\n")
+```
+
+Using the information we discovered above, we can build a prediction model. Using the results of the confusion matrix, we see that there were no values for actual -1 and prediction -1, as well as for actual 1 and prediction -1. For actual -1 and prediction 1, there are 695 values. Additionally, for actual 1 and prediction 1, there are 1762 values. This confusion matrix has an accuracy of 71.71%. Though this is relatively high, it would be considered "just passing" on a grading scale. The misclassification error rate is 0.2899. 
+
+### Section 5: Predictive Perfomance on Test Sets
+```{r, echo=FALSE}
+setwd("/Users/katelindui/Desktop/test")
+
+test = list()
+overview = data.frame(mouse_name = character(), date_exp = character())
+
+for(i in 1:2){
+  test[[i]]=readRDS(paste("/Users/katelindui/Desktop/test/test", i,'.rds',sep=''))
+  overview = rbind(overview, data.frame(mouse_name = test[[i]]$mouse_name, date_exp = test[[i]]$date_exp))
+}
+print(overview)
+```
+The test data includes 2 sessions (1 & 18) which correlate to the mice Cori and Lederberg. 
+
+```{r, echo=FALSE}
+# predictive model
+test_data <- list()
+for(i in 1:length(test)){
+  feedback_type <- test[[i]]$feedback_type
+  spk_counts <- sapply(test[[i]]$spks, function(x) sum(rowSums(x)))
+  left_contrast <- test[[i]]$contrast_left
+  right_contrast <- test[[i]]$contrast_right
+  
+  test_data[[i]] <- data.frame(feedback_type, spk_counts, left_contrast, right_contrast)
+}
+
+combined_test_data_df <- do.call(rbind, test_data)
+
+combined_test_data_df$feedback_type <- as.factor(combined_test_data_df$feedback_type)
+
+set.seed(123)
+test_train_indices <- createDataPartition(combined_test_data_df$feedback_type, p = 0.3, list = FALSE)
+test_train_data <- combined_test_data_df[test_train_indices, ]
+test_test_data <- combined_test_data_df[-test_train_indices, ]
+
+test_pred_model <- train(feedback_type ~ ., data = test_train_data, method = "glm", family = "binomial")
+
+
+actual_test <- test_test_data$feedback_type
+test_predictions <- predict(test_pred_model, newdata = test_test_data)
+
+test_confusion_matrix <- table( Predicted = test_predictions, Actual = actual_test)
+test_accuracy <- confusionMatrix(test_confusion_matrix)
+test_accuracy
+```
+
+Using the predictive model I developed from the sessions, I have applied it to the test data. From the confusion matrix, we see that for actual -1 and prediction -1, there are 12 values. actual 1 and prediction -1 has 9 values. Actual -1 and prediction 1 has 26 values. Actual 1 and prediction 1 has the most values with 92. The accuracy of the confusion matrix slightly larger than the accuracy for the session data at 74.82%. 
+
+### Section 5: Discussion
+There is plenty of room for improvement throughout my project. In this project tried to incorporate techniques provided to me in class, discussion, and from outside resources in this project; though I know not everything can be perfect. I believe my Section 1: Introduction is quite strong and I am confident in the results I provided. I acknowledge that there are countless ways to proceed with an exploratory analysis. I chose a few which provided me with knowledgeable information. I believe the PCA was a good method when proceeding with a large set of data, which was the case here. My predictive model for the session data could definitely use some improvements. I noticed that my confusion matrix has 0's on the true positive and true negative, but no matter how I change the "p=x" in the train_indices, it would not change to a number other than 0. Unfortunately, I believe it is beyond my capabilities to see where I went wrong using the sessions 1-18, though my predictive model for the test data (using session 1 & 18) resulted me with a slightly higher accurate confusion matrix. 
+
+## Acknowledgement {-}
+ChatGPT
+https://www.geeksforgeeks.org/how-to-make-scree-plot-in-r-with-ggplot2/
+https://cmdlinetips.com/2019/04/introduction-to-pca-with-r-using-prcomp/
+Discussion: Dimension reduction:PCA (5/9/2023)
+
+## Session information {-}
+```{r}
+sessionInfo()
+```
